@@ -1,0 +1,71 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    user: 1000:1000
+    group_add:
+      - "105"
+    ports:
+      - 8096:8096
+      - 8920:8920
+    volumes:
+      - /home/my-user/my_server/jellyfin/config:/config
+      - /home/my-user/my_server/jellyfin/cache:/cache
+      - type: bind
+        source: /mnt/my-disk
+        target: /media
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
+    restart: 'unless-stopped'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    networks:
+      my_server_network:
+        ipv4_address: 192.168.55.5
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - 10080:80
+      - 10443:443
+    volumes:
+      - /home/my-user/my_server/nginx/conf.d:/etc/nginx/conf.d
+      - /home/my-user/my_server/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - /home/my-user/my_server/nginx/ssl:/etc/nginx/ssl
+    restart: unless-stopped
+    networks:
+      my_server_network:
+        ipv4_address: 192.168.55.10
+
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - /home/my-user/my_server/hassio/config:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    privileged: true
+    networks:
+      my_server_network:
+        ipv4_address: 192.168.55.15
+
+networks:
+  my_server_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.55.0/24
+```
+## Networks
+For convenience, I used a subnet to assign static IP addresses to individual containers.
+```yaml
+networks:
+  my_server_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.55.0/24
+          gateway: 192.168.55.1
